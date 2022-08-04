@@ -516,7 +516,7 @@
                                         "and": [
                                             {
                                                 "contains": [
-                                                    "@{body('List_all_Snapshots')",
+                                                    "@{body('List_all_Snapshots')}",
                                                     "errors"
                                                 ]
                                             }
