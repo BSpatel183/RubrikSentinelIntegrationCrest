@@ -2,12 +2,24 @@
     "$schema":  "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion":  "1.0.0.0",
     "metadata":  {
-        "title":  "",
-        "description":  "",
-        "prerequisites":  "",
-        "postDeployment":  [
+        "title":  "Rubrik IOC Scan",
+        "description":  "This playbook interacts with Rubrik Security Cloud to scan backups for specified IOCs. This playbook is used by other playbooks that leverage this capability.",
+        "prerequisites":  [
+            "1. The Rubrik Security Cloud data connector should be configured to send appropriate events to Microsoft Sentinel.",
+            "2. The Rubrik Security Cloud solution should be configured to [connect to Rubrik Security Cloud API end points using a Service Account](https://docs.rubrik.com/en-us/saas/saas/polaris_api_access_with_service_accounts.html), the service account should be assigned a role that includes the relevant privileges necessary to perform the desired operations (see [Roles and Permissions](https://docs.rubrik.com/en-us/saas/saas/common/roles_and_permissions.html) in the Rubrik Security Cloud user guide).",
+            "3. To perform an IOC scan the IOC YARA rule should be available as a URL.",
+            "4. Store Service account credentials in Key Vault and obtain keyvault name and tenantId"
         ],
-        "prerequisitesDeployTemplateFile":  "",
+        "postDeployment":  [
+            "**a. Authorize connections**",
+            "Once deployment is complete, authorize each connection.",
+            "1. Click the Custom Connector connection resource",
+            "2. Click edit API connection",
+            "3. Click Authorize",
+            "4. Sign in",
+            "5. Click Save",
+            "6. Repeat steps for other connections"
+        ],
         "lastUpdateTime":  "",
         "entities":  [
         ],
@@ -18,13 +30,27 @@
             "armtemplate":  "Generated from https://github.com/Azure/Azure-Sentinel/tree/master/Tools/Playbook-ARM-Template-Generator"
         },
         "author":  {
-            "name":  ""
+            "name":  "Rubrik"
         }
     },
     "parameters":  {
         "PlaybookName":  {
             "defaultValue":  "RubrikIOCScan",
             "type":  "string"
+        },
+        "Rubrik Connector name": {
+            "defaultValue": "RubrikCustomConnector",
+            "type": "String",
+            "metadata": {
+                "description": "Rubrik Custom Connector name"
+            }
+        },
+        "keyvaultName": {
+            "defaultValue": "RubrikSentinelKeyVault",
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
         }
     },
     "variables":  {
@@ -35,7 +61,7 @@
         {
             "properties":  {
                 "provisioningState":  "Succeeded",
-                "state":  "Disabled",
+                "state":  "Enabled",
                 "definition":  {
                     "$schema":  "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
                     "contentVersion":  "1.0.0.0",
@@ -215,7 +241,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -240,7 +266,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -1287,7 +1313,7 @@
                                                                 "type":  "Wait",
                                                                 "inputs":  {
                                                                     "interval":  {
-                                                                        "count":  "@if(or(empty(string(triggerBody()?['PollingInterval'])),lessOrEquals(triggerBody()?['PollingInterval'],0)), 5, triggerBody()?['PollingInterval']) ",
+                                                                        "count":  "@if(or(empty(string(triggerBody()?['PollingInterval'])),lessOrEquals(int(triggerBody()?['PollingInterval']),0)), 5, int(triggerBody()?['PollingInterval']))",
                                                                         "unit":  "Minute"
                                                                     }
                                                                 }
@@ -1785,8 +1811,8 @@
                                                                 "and":  [
                                                                     {
                                                                         "equals":  [
-                                                                            "@items('For_each_5')?['matches']",
-                                                                            "@null"
+                                                                            "@length(items('For_each_5')?['matches'])",
+                                                                            0
                                                                         ]
                                                                     }
                                                                 ]
@@ -1897,8 +1923,8 @@
                                                     {
                                                         "not":  {
                                                             "equals":  [
-                                                                "@variables('RecoverableSnapshots')",
-                                                                "@null"
+                                                                "@length(variables('RecoverableSnapshots'))",
+                                                                0
                                                             ]
                                                         }
                                                     }
@@ -2013,37 +2039,8 @@
                                     },
                                     "else":  {
                                         "actions":  {
-                                            "Check_error_message_is_empty_or_not":  {
-                                                "actions":  {
-                                                    "Set_variable_15":  {
-                                                        "runAfter":  {
-                                                        },
-                                                        "type":  "SetVariable",
-                                                        "inputs":  {
-                                                            "name":  "ErrorMessage",
-                                                            "value":  "IOC Scan is not successfuly finished."
-                                                        }
-                                                    }
-                                                },
-                                                "runAfter":  {
-                                                },
-                                                "expression":  {
-                                                    "and":  [
-                                                        {
-                                                            "equals":  [
-                                                                "@empty(variables('ErrorMessage'))",
-                                                                "@true"
-                                                            ]
-                                                        }
-                                                    ]
-                                                },
-                                                "type":  "If"
-                                            },
                                             "Set_limit_to_zero":  {
                                                 "runAfter":  {
-                                                    "Check_error_message_is_empty_or_not":  [
-                                                        "Succeeded"
-                                                    ]
                                                 },
                                                 "type":  "SetVariable",
                                                 "inputs":  {
@@ -2092,7 +2089,7 @@
                                                     },
                                                     "indicatorsOfCompromise":  "@variables('IOCAdvance')",
                                                     "maxMatchesPerSnapshot":  100,
-                                                    "name":  "DemoRecovery",
+                                                    "name":  "@{triggerBody()?['ScanName']}",
                                                     "objectFids":  "@variables('ObjectId')",
                                                     "snapshotScanLimit":  {
                                                         "endTime":  "@{variables('EndDate')}",
@@ -2396,7 +2393,9 @@
                                 "variables":  [
                                     {
                                         "name":  "IOCScanResult",
-                                        "type":  "object"
+                                        "type":  "object",
+                                        "value":  {
+                                        }
                                     }
                                 ]
                             }
@@ -2411,9 +2410,9 @@
                             "RubrikCustomConnector":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('RubrikcustomconnectorConnectionName'))]",
                                 "connectionName":  "[variables('RubrikcustomconnectorConnectionName')]",
-                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                             },
-                            "keyvault":  {
+                            "keyvault_1":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('KeyvaultConnectionName'))]",
                                 "connectionName":  "[variables('KeyvaultConnectionName')]",
                                 "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
@@ -2449,7 +2448,7 @@
                 "customParameterValues":  {
                 },
                 "api":  {
-                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                 }
             }
         },
@@ -2465,6 +2464,11 @@
                 },
                 "api":  {
                     "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
+                },
+                "parameterValues": {
+                    "token:TenantId": "[parameters('tenantId')]",
+                    "token:grantType": "code",
+                    "vaultName": "[parameters('keyvaultName')]"
                 }
             }
         }

@@ -2,12 +2,24 @@
     "$schema":  "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion":  "1.0.0.0",
     "metadata":  {
-        "title":  "",
-        "description":  "",
-        "prerequisites":  "",
-        "postDeployment":  [
+        "title":  "Rubrik Ransomware Discovery and VM Recovery",
+        "description":  "This playbook interacts with Rubrik Security Cloud to (1) optionally preserve evidence by creating an on-demand snapshot of the object, (2) identify a potential recovery point by scanning backups for specified IOCs, and (3) supporting VM image level recovery.",
+        "prerequisites":  [
+            "1. The Rubrik Security Cloud data connector should be configured to send appropriate events to Microsoft Sentinel.",
+            "2. The Rubrik Security Cloud solution should be configured to [connect to Rubrik Security Cloud API end points using a Service Account](https://docs.rubrik.com/en-us/saas/saas/polaris_api_access_with_service_accounts.html), the service account should be assigned a role that includes the relevant privileges necessary to perform the desired operations (see [Roles and Permissions](https://docs.rubrik.com/en-us/saas/saas/common/roles_and_permissions.html) in the Rubrik Security Cloud user guide).",
+            "3. To perform an IOC scan the IOC YARA rule should be available.",
+            "4. Obtain Teams GroupId and ChannelId"
         ],
-        "prerequisitesDeployTemplateFile":  "",
+        "postDeployment":  [
+            "**a. Authorize connections**",
+            "Once deployment is complete, authorize each connection.",
+            "1. Click the Custom Connector connection resource",
+            "2. Click edit API connection",
+            "3. Click Authorize",
+            "4. Sign in",
+            "5. Click Save",
+            "6. Repeat steps for other connections"
+        ],
         "lastUpdateTime":  "",
         "entities":  [
         ],
@@ -18,13 +30,41 @@
             "armtemplate":  "Generated from https://github.com/Azure/Azure-Sentinel/tree/master/Tools/Playbook-ARM-Template-Generator"
         },
         "author":  {
-            "name":  ""
+            "name":  "Rubrik"
         }
     },
     "parameters":  {
         "PlaybookName":  {
             "defaultValue":  "RubrikRansomwareDiscoveryAndVMRecovery",
             "type":  "string"
+        },
+        "Rubrik Connector name": {
+            "defaultValue": "RubrikCustomConnector",
+            "type": "String",
+            "metadata": {
+                "description": "Rubrik Custom Connector name"
+            }
+        },
+        "keyvaultName": {
+            "defaultValue": "RubrikSentinelKeyVault",
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
+        },
+        "TeamsGroupId": {
+            "defaultValue": "TeamsGroupIds",
+            "type": "String",
+            "metadata": {
+                "description": "Id of the Teams Group where the adaptive card will be posted."
+            }
+        },
+        "TeamsChannelId": {
+            "defaultValue": "TeamsChannelId",
+            "type": "String",
+            "metadata": {
+                "description": "Id of the Teams Channel where the adaptive card will be posted."
+            }
         }
     },
     "variables":  {
@@ -36,7 +76,7 @@
         {
             "properties":  {
                 "provisioningState":  "Succeeded",
-                "state":  "Disabled",
+                "state":  "Enabled",
                 "definition":  {
                     "$schema":  "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
                     "contentVersion":  "1.0.0.0",
@@ -409,7 +449,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -434,7 +474,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -474,8 +514,8 @@
                                     "body":  {
                                         "messageBody":  "{\n    \"$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",\n    \"type\": \"AdaptiveCard\",\n    \"version\": \"1.3\",\n    \"body\": [\n        {\n            \"type\": \"TextBlock\",\n            \"size\": \"Large\",\n            \"weight\": \"Bolder\",\n            \"text\": \"IOC Scan and Recovery Data\",\n            \"horizontalAlignment\": \"Center\",\n            \"style\": \"heading\",\n            \"color\": \"Accent\",\n            \"fontType\": \"Default\",\n            \"wrap\": true,\n            \"id\": \"heading\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Input arguments required to initiate IOC Scan(s) and recovery.\",\n            \"wrap\": true,\n            \"color\": \"Light\",\n            \"style\": \"default\",\n            \"separator\": true,\n            \"id\": \"info\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"IOC hash to scan for\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip1\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"IOC hash to scan for\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"IOC path to scan for\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip2\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"IOC path to scan for\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"IOC Yara rule to scan for\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip3\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"IOC Yara rule to scan for\",\n            \"isMultiline\": true\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"IOC Yara rule file URL to scan for\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip4\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"IOC Yara rule file URL\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Start date to initiate the IOC scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip5\"\n        },\n        {\n            \"type\": \"Input.Date\",\n            \"id\": \"Start date to initiate\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"End date to initiate the IOC scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip6\"\n        },\n        {\n            \"type\": \"Input.Date\",\n            \"id\": \"End date to initiate\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Time Delta to update the date range of IOC scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip7\"\n        },\n        {\n            \"type\": \"Input.Number\",\n            \"id\": \"Time Delta\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Polling interval for IOC Scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip8\"\n        },\n        {\n            \"type\": \"Input.Number\",\n            \"placeholder\": \"5\",\n            \"id\": \"Polling interval for IOC Scan\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Polling timeout for IOC Scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip9\"\n        },\n        {\n            \"type\": \"Input.Number\",\n            \"placeholder\": \"720\",\n            \"label\": \"In minutes\",\n            \"id\": \"Polling timeout for IOC Scan\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Polling interval for recovery asynchronous results\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip10\"\n        },\n        {\n            \"type\": \"Input.Number\",\n            \"placeholder\": \"5\",\n            \"id\": \"Polling interval for recovery\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Polling timeout for recovery asynchronous results\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip11\"\n        },\n        {\n            \"type\": \"Input.Number\",\n            \"placeholder\": \"720\",\n            \"id\": \"Polling timeout for recovery\",\n            \"label\": \"In minutes\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Limit to loop the IOC scan sub-playbook\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip12\"\n        },\n        {\n            \"type\": \"Input.Number\",\n            \"placeholder\": \"0\",\n            \"id\": \"Limit to loop the IOC scan sub-playbook\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Paths to include in the IOC Scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip13\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Paths to include in the IOC Scan\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Paths to exclude in the IOC Scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip14\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Paths to exclude in the IOC Scan\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Paths to exempt in the IOC Scan\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip15\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Paths to exempt in the IOC Scan\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to live-mount or export a recoverable snapshot?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip16\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"id\": \"live-mount or export\",\n            \"value\": \"Live-Mount\",\n            \"style\": \"expanded\",\n            \"choices\": [\n                {\n                    \"title\": \"Live-Mount\",\n                    \"value\": \"Live-Mount\"\n                },\n                {\n                    \"title\": \"Export\",\n                    \"value\": \"Export\"\n                },\n                {\n                    \"title\": \"No Recovery\",\n                    \"value\": \"No Recovery\"\n                }\n            ],\n            \"isRequired\": true,\n            \"errorMessage\": \"This field id required\",\n            \"label\": \"required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Scan Name\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip17\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Scan Name\"\n        }\n    ],\n    \"actions\": [\n        {\n            \"type\": \"Action.Submit\",\n            \"title\": \"Submit Answer\",\n            \"data\": {\n                \"id\": \"LoginVal\"\n            },\n            \"style\": \"positive\",\n            \"id\": \"Submit\"\n        }\n    ]\n}\n",
                                         "recipient":  {
-                                            "channelId":  "19:bnaBaHVOHCBYW6MgUqrQK9R7mnkjvb9j7F1T9TaTct41@thread.tacv2",
-                                            "groupId":  "33066078-fe8e-4fad-80a5-9b6728e915a4"
+                                            "channelId":  "[concat('', parameters('TeamsChannelId'))]",
+                                            "groupId":  "[concat('', parameters('TeamsGroupId'))]"
                                         },
                                         "updateMessage":  "Thanks for your response!"
                                     },
@@ -703,7 +743,7 @@
                                                         "inputs":  {
                                                             "body":  {
                                                                 "BaseUrl":  "@triggerBody()?['BaseUrl']",
-                                                                "ClusterId":  "d1879b0c-e18f-4bf6-8894-c35f8fa336a6",
+                                                                "ClusterId":  "@triggerBody()?['ClusterId']",
                                                                 "PollingInterval":  4,
                                                                 "PollingTimeout":  720,
                                                                 "RequestId":  "@body('Parse_Response_of_Create_Snapshot_for_evidence')?['data']?['vsphereOnDemandSnapshot']?['id']"
@@ -1822,8 +1862,8 @@
                                                                             "body":  {
                                                                                 "messageBody":  "{\n    \"$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",\n    \"type\": \"AdaptiveCard\",\n    \"version\": \"1.3\",\n    \"body\": [\n        {\n            \"type\": \"TextBlock\",\n            \"size\": \"Large\",\n            \"weight\": \"Bolder\",\n            \"text\": \"Live-Mount VM data\",\n            \"horizontalAlignment\": \"Center\",\n            \"style\": \"heading\",\n            \"color\": \"Accent\",\n            \"fontType\": \"Default\",\n            \"wrap\": true,\n            \"id\": \"heading\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Input arguments required to initiate live mounting of a recoverable snapshot.\",\n            \"wrap\": true,\n            \"color\": \"Light\",\n            \"style\": \"default\",\n            \"separator\": true,\n            \"id\": \"info\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Name to search for a Vsphere host that will be used for live mounting\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip1\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Name to search for a Vsphere host that will be used for live mounting\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Vsphere datastore name to use for live mounting\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip2\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Vsphere datastore name to use for live mounting\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to power on the live-mounted VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip3\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"id\": \"power on the live-mounted VM?\",\n            \"value\": \"False\",\n            \"style\": \"expanded\",\n            \"choices\": [\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                },\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                }\n            ],\n            \"isRequired\": true,\n            \"errorMessage\": \"This field id required\",\n            \"label\": \"required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether mac addresses of network devices be kept on the live-mounted VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip4\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                },\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"value\": \"True\",\n            \"style\": \"expanded\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This field is required\",\n            \"label\": \"required\",\n            \"id\": \"mac addresses of network devices be kept on the live-mounted VM?\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to recover vSphere tags in the live-mounted VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip5\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                },\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"id\": \"recover vSphere tags in the live-mounted VM?\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This filed is required\",\n            \"label\": \"required\",\n            \"value\": \"True\",\n            \"style\": \"expanded\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to remove the network devices of the original VM in the live-mounted VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip6\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                },\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"id\": \"remove the network devices of the original VM in the live-mounted VM?\",\n            \"isRequired\": true,\n            \"value\": \"False\",\n            \"errorMessage\": \"This field is required\",\n            \"style\": \"expanded\",\n            \"label\": \"required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to disable networking in the live-mounted VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip7\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                },\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"id\": \"disable networking in the live-mounted VM?\",\n            \"label\": \"required\",\n            \"value\": \"True\",\n            \"style\": \"expanded\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This field is required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Live-mounted VM name\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip8\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Live-mounted VM name\"\n        }\n    ],\n    \"actions\": [\n        {\n            \"type\": \"Action.Submit\",\n            \"title\": \"Submit Answer\",\n            \"data\": {\n                \"id\": \"LoginVal\"\n            },\n            \"style\": \"positive\",\n            \"id\": \"Submit\"\n        }\n    ]\n}\n",
                                                                                 "recipient":  {
-                                                                                    "channelId":  "19:bnaBaHVOHCBYW6MgUqrQK9R7mnkjvb9j7F1T9TaTct41@thread.tacv2",
-                                                                                    "groupId":  "33066078-fe8e-4fad-80a5-9b6728e915a4"
+                                                                                    "channelId":  "[concat('', parameters('TeamsChannelId'))]",
+                                                                                    "groupId":  "[concat('', parameters('TeamsGroupId'))]"
                                                                                 },
                                                                                 "updateMessage":  "Thanks for your response!"
                                                                             },
@@ -2410,8 +2450,8 @@
                                                                                 "body":  {
                                                                                     "messageBody":  "{\n    \"$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",\n    \"type\": \"AdaptiveCard\",\n    \"version\": \"1.3\",\n    \"body\": [\n        {\n            \"type\": \"TextBlock\",\n            \"size\": \"Large\",\n            \"weight\": \"Bolder\",\n            \"text\": \"Export VM data\",\n            \"horizontalAlignment\": \"Center\",\n            \"style\": \"heading\",\n            \"color\": \"Accent\",\n            \"fontType\": \"Default\",\n            \"wrap\": true,\n            \"id\": \"heading\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Input arguments required to initiate exporting of a recoverable snapshot.\",\n            \"wrap\": true,\n            \"color\": \"Light\",\n            \"style\": \"default\",\n            \"separator\": true,\n            \"id\": \"info\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Name to search for a Vsphere host that will be used while exporting\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip1\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Name to search for a Vsphere host in exporting\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Name to search for a Vsphere datastore that will be used for exporting\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip2\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Name to search for a Vsphere datastore in exporting\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This field is required\",\n            \"label\": \"required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to power on the exported VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"separator\": true,\n            \"id\": \"Ip3\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"id\": \"power on the exported VM?\",\n            \"value\": \"False\",\n            \"style\": \"expanded\",\n            \"choices\": [\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                },\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                }\n            ],\n            \"isRequired\": true,\n            \"errorMessage\": \"This field id required\",\n            \"label\": \"required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether mac addresses of network devices be kept on the exported VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip4\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                },\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"value\": \"True\",\n            \"style\": \"expanded\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This field is required\",\n            \"label\": \"required\",\n            \"id\": \"mac addresses of network devices be kept on the exported VM\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to recover vSphere tags in the exported VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip5\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                },\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"id\": \"recover vSphere tags in the exported VM?\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This filed is required\",\n            \"label\": \"required\",\n            \"value\": \"True\",\n            \"style\": \"expanded\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to remove the network devices of the original VM in the exported VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip6\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                },\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"id\": \"remove the network devices of the original VM in the exported VM?\",\n            \"isRequired\": true,\n            \"value\": \"False\",\n            \"errorMessage\": \"This field is required\",\n            \"style\": \"expanded\",\n            \"label\": \"required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Whether to disable networking in the exported VM?\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip7\"\n        },\n        {\n            \"type\": \"Input.ChoiceSet\",\n            \"choices\": [\n                {\n                    \"title\": \"True\",\n                    \"value\": \"True\"\n                },\n                {\n                    \"title\": \"False\",\n                    \"value\": \"False\"\n                }\n            ],\n            \"placeholder\": \"Placeholder text\",\n            \"id\": \"disable networking in the exported VM?\",\n            \"label\": \"required\",\n            \"value\": \"True\",\n            \"style\": \"expanded\",\n            \"isRequired\": true,\n            \"errorMessage\": \"This field is required\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"Exported VM name\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"id\": \"Ip8\"\n        },\n        {\n            \"type\": \"Input.Text\",\n            \"id\": \"Exported VM name\"\n        }\n    ],\n    \"actions\": [\n        {\n            \"type\": \"Action.Submit\",\n            \"title\": \"Submit Answer\",\n            \"data\": {\n                \"id\": \"LoginVal\"\n            },\n            \"style\": \"positive\",\n            \"id\": \"Submit\"\n        }\n    ]\n}\n",
                                                                                     "recipient":  {
-                                                                                        "channelId":  "19:bnaBaHVOHCBYW6MgUqrQK9R7mnkjvb9j7F1T9TaTct41@thread.tacv2",
-                                                                                        "groupId":  "33066078-fe8e-4fad-80a5-9b6728e915a4"
+                                                                                        "channelId":  "[concat('', parameters('TeamsChannelId'))]",
+                                                                                        "groupId":  "[concat('', parameters('TeamsGroupId'))]"
                                                                                     },
                                                                                     "updateMessage":  "Thanks for your response!"
                                                                                 },
@@ -3126,7 +3166,7 @@
                                         "type":  "Response",
                                         "kind":  "Http",
                                         "inputs":  {
-                                            "body":  "The object associated with the anomaly incident is not a Virtual Machine. Hence, exiting�",
+                                            "body":  "The object associated with the anomaly incident is not a Virtual Machine. Hence, exiting?",
                                             "statusCode":  400
                                         }
                                     },
@@ -3139,7 +3179,7 @@
                                         "type":  "Terminate",
                                         "inputs":  {
                                             "runError":  {
-                                                "message":  "The object associated with the anomaly incident is not a Virtual Machine. Hence, exiting�"
+                                                "message":  "The object associated with the anomaly incident is not a Virtual Machine. Hence, exiting?"
                                             },
                                             "runStatus":  "Failed"
                                         }
@@ -3723,7 +3763,7 @@
                             "inputs":  {
                                 "body":  {
                                     "BaseUrl":  "@triggerBody()?['BaseUrl']",
-                                    "ClusterId":  "d1879b0c-e18f-4bf6-8894-c35f8fa336a6",
+                                    "ClusterId":  "@triggerBody()?['ClusterId']",
                                     "EndDate":  "@body('Collect_IOC_scan_and_general_recovery_data')?['data']?['end date to initiate']",
                                     "IOCHash":  "@body('Collect_IOC_scan_and_general_recovery_data')?['data']?['ioc hash to scan for']",
                                     "IOCPath":  "@body('Collect_IOC_scan_and_general_recovery_data')?['data']?['ioc path to scan for']",
@@ -3803,9 +3843,9 @@
                             "RubrikCustomConnector":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('RubrikcustomconnectorConnectionName'))]",
                                 "connectionName":  "[variables('RubrikcustomconnectorConnectionName')]",
-                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                             },
-                            "keyvault":  {
+                            "keyvault_1":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('KeyvaultConnectionName'))]",
                                 "connectionName":  "[variables('KeyvaultConnectionName')]",
                                 "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
@@ -3847,7 +3887,7 @@
                 "customParameterValues":  {
                 },
                 "api":  {
-                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                 }
             }
         },
@@ -3863,6 +3903,11 @@
                 },
                 "api":  {
                     "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
+                },
+                "parameterValues": {
+                    "token:TenantId": "[parameters('tenantId')]",
+                    "token:grantType": "code",
+                    "vaultName": "[parameters('keyvaultName')]"
                 }
             }
         },

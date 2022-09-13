@@ -2,12 +2,22 @@
     "$schema":  "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion":  "1.0.0.0",
     "metadata":  {
-        "title":  "",
-        "description":  "",
-        "prerequisites":  "",
-        "postDeployment":  [
+        "title":  "Rubrik Anomaly Analysis",
+        "description":  "This playbook queries Rubrik Security Cloud to enrich the Anomaly event with additional information regarding the Ransomware analysis, results from sensitive data scans, (to aid in incident prioritization), and additional information about the Rubrik cluster.",
+        "prerequisites":  [
+            "1. The Rubrik Security Cloud data connector should be configured to send appropriate events to Microsoft Sentinel.",
+            "2. The Rubrik Security Cloud solution should be configured to [connect to Rubrik Security Cloud API end points using a Service Account](https://docs.rubrik.com/en-us/saas/saas/polaris_api_access_with_service_accounts.html), the service account should be assigned a role that includes the relevant privileges necessary to perform the desired operations (see [Roles and Permissions](https://docs.rubrik.com/en-us/saas/saas/common/roles_and_permissions.html) in the Rubrik Security Cloud user guide)."
         ],
-        "prerequisitesDeployTemplateFile":  "",
+        "postDeployment":  [
+            "**a. Authorize connections**",
+            "Once deployment is complete, authorize each connection.",
+            "1. Click the Custom Connector connection resource",
+            "2. Click edit API connection",
+            "3. Click Authorize",
+            "4. Sign in",
+            "5. Click Save",
+            "6. Repeat steps for other connections"
+        ],
         "lastUpdateTime":  "",
         "entities":  [
         ],
@@ -18,13 +28,27 @@
             "armtemplate":  "Generated from https://github.com/Azure/Azure-Sentinel/tree/master/Tools/Playbook-ARM-Template-Generator"
         },
         "author":  {
-            "name":  ""
+            "name":  "Rubrik"
         }
     },
     "parameters":  {
         "PlaybookName":  {
             "defaultValue":  "RubrikAnomalyAnalysis",
             "type":  "string"
+        },
+        "Rubrik Connector name": {
+            "defaultValue": "RubrikCustomConnector",
+            "type": "String",
+            "metadata": {
+                "description": "Rubrik Custom Connector name"
+            }
+        },
+        "keyvaultName": {
+            "defaultValue": "RubrikSentinelKeyVault",
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
         }
     },
     "variables":  {
@@ -35,7 +59,7 @@
         {
             "properties":  {
                 "provisioningState":  "Succeeded",
-                "state":  "Disabled",
+                "state":  "Enabled",
                 "definition":  {
                     "$schema":  "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
                     "contentVersion":  "1.0.0.0",
@@ -94,6 +118,14 @@
                                 },
                                 "method":  "post",
                                 "path":  "/api/client_token"
+                            },
+                            "runtimeConfiguration":  {
+                                "secureData":  {
+                                    "properties":  [
+                                        "inputs",
+                                        "outputs"
+                                    ]
+                                }
                             }
                         },
                         "Determine_the_status_of_the_Rubrik_Radar_analysis_process":  {
@@ -359,7 +391,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "policyStatuses":  {
                                                                                                             "items":  {
@@ -372,15 +407,21 @@
                                                                                                                     }
                                                                                                                 },
                                                                                                                 "required":  [
-                                                                                                                    "status",
-                                                                                                                    "__typename"
+                                                                                                                    "__typename",
+                                                                                                                    "status"
                                                                                                                 ],
-                                                                                                                "type":  "object"
+                                                                                                                "type":  [
+                                                                                                                    "object",
+                                                                                                                    "null"
+                                                                                                                ]
                                                                                                             },
                                                                                                             "type":  "array"
                                                                                                         }
                                                                                                     },
-                                                                                                    "type":  "object"
+                                                                                                    "type":  [
+                                                                                                        "object",
+                                                                                                        "null"
+                                                                                                    ]
                                                                                                 },
                                                                                                 "osType":  {
                                                                                                     "type":  "string"
@@ -411,56 +452,12 @@
                                                                                                                                 "type":  "string"
                                                                                                                             }
                                                                                                                         },
-                                                                                                                        "type":  "object"
+                                                                                                                        "type":  [
+                                                                                                                            "object",
+                                                                                                                            "null"
+                                                                                                                        ]
                                                                                                                     },
                                                                                                                     "analyzerResults":  {
-                                                                                                                        "items":  {
-                                                                                                                            "properties":  {
-                                                                                                                                "__typename":  {
-                                                                                                                                    "type":  "string"
-                                                                                                                                },
-                                                                                                                                "analyzer":  {
-                                                                                                                                    "properties":  {
-                                                                                                                                        "__typename":  {
-                                                                                                                                            "type":  "string"
-                                                                                                                                        },
-                                                                                                                                        "analyzerType":  {
-                                                                                                                                            "type":  "string"
-                                                                                                                                        },
-                                                                                                                                        "id":  {
-                                                                                                                                            "type":  "string"
-                                                                                                                                        },
-                                                                                                                                        "name":  {
-                                                                                                                                            "type":  "string"
-                                                                                                                                        }
-                                                                                                                                    },
-                                                                                                                                    "type":  "object"
-                                                                                                                                },
-                                                                                                                                "hits":  {
-                                                                                                                                    "properties":  {
-                                                                                                                                        "__typename":  {
-                                                                                                                                            "type":  "string"
-                                                                                                                                        },
-                                                                                                                                        "permittedHits":  {
-                                                                                                                                            "type":  "integer"
-                                                                                                                                        },
-                                                                                                                                        "totalHits":  {
-                                                                                                                                            "type":  "integer"
-                                                                                                                                        },
-                                                                                                                                        "violations":  {
-                                                                                                                                            "type":  "integer"
-                                                                                                                                        }
-                                                                                                                                    },
-                                                                                                                                    "type":  "object"
-                                                                                                                                }
-                                                                                                                            },
-                                                                                                                            "required":  [
-                                                                                                                                "hits",
-                                                                                                                                "analyzer",
-                                                                                                                                "__typename"
-                                                                                                                            ],
-                                                                                                                            "type":  "object"
-                                                                                                                        },
                                                                                                                         "type":  "array"
                                                                                                                     },
                                                                                                                     "hits":  {
@@ -484,16 +481,22 @@
                                                                                                                                 "type":  "integer"
                                                                                                                             }
                                                                                                                         },
-                                                                                                                        "type":  "object"
+                                                                                                                        "type":  [
+                                                                                                                            "object",
+                                                                                                                            "null"
+                                                                                                                        ]
                                                                                                                     }
                                                                                                                 },
                                                                                                                 "required":  [
+                                                                                                                    "__typename",
                                                                                                                     "analyzerGroup",
                                                                                                                     "analyzerResults",
-                                                                                                                    "hits",
-                                                                                                                    "__typename"
+                                                                                                                    "hits"
                                                                                                                 ],
-                                                                                                                "type":  "object"
+                                                                                                                "type":  [
+                                                                                                                    "object",
+                                                                                                                    "null"
+                                                                                                                ]
                                                                                                             },
                                                                                                             "type":  "array"
                                                                                                         },
@@ -518,7 +521,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "hits":  {
                                                                                                             "properties":  {
@@ -541,7 +547,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "numActivities":  {
                                                                                                             "type":  "integer"
@@ -570,7 +579,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "openAccessFilesWithHits":  {
                                                                                                             "properties":  {
@@ -593,7 +605,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "openAccessFolders":  {
                                                                                                             "properties":  {
@@ -616,7 +631,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "openAccessStaleFiles":  {
                                                                                                             "properties":  {
@@ -639,7 +657,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "staleFiles":  {
                                                                                                             "properties":  {
@@ -662,7 +683,10 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "staleFilesWithHits":  {
                                                                                                             "properties":  {
@@ -685,10 +709,16 @@
                                                                                                                     "type":  "integer"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         }
                                                                                                     },
-                                                                                                    "type":  "object"
+                                                                                                    "type":  [
+                                                                                                        "object",
+                                                                                                        "null"
+                                                                                                    ]
                                                                                                 },
                                                                                                 "shareType":  {
                                                                                                     "type":  "string"
@@ -710,7 +740,10 @@
                                                                                                                     "type":  "string"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "effectiveSlaDomain":  {
                                                                                                             "properties":  {
@@ -724,7 +757,10 @@
                                                                                                                     "type":  "string"
                                                                                                                 }
                                                                                                             },
-                                                                                                            "type":  "object"
+                                                                                                            "type":  [
+                                                                                                                "object",
+                                                                                                                "null"
+                                                                                                            ]
                                                                                                         },
                                                                                                         "id":  {
                                                                                                             "type":  "string"
@@ -743,11 +779,14 @@
                                                                                                                     }
                                                                                                                 },
                                                                                                                 "required":  [
+                                                                                                                    "__typename",
                                                                                                                     "name",
-                                                                                                                    "objectType",
-                                                                                                                    "__typename"
+                                                                                                                    "objectType"
                                                                                                                 ],
-                                                                                                                "type":  "object"
+                                                                                                                "type":  [
+                                                                                                                    "object",
+                                                                                                                    "null"
+                                                                                                                ]
                                                                                                             },
                                                                                                             "type":  "array"
                                                                                                         },
@@ -771,11 +810,14 @@
                                                                                                                     }
                                                                                                                 },
                                                                                                                 "required":  [
+                                                                                                                    "__typename",
                                                                                                                     "name",
-                                                                                                                    "objectType",
-                                                                                                                    "__typename"
+                                                                                                                    "objectType"
                                                                                                                 ],
-                                                                                                                "type":  "object"
+                                                                                                                "type":  [
+                                                                                                                    "object",
+                                                                                                                    "null"
+                                                                                                                ]
                                                                                                             },
                                                                                                             "type":  "array"
                                                                                                         },
@@ -783,7 +825,10 @@
                                                                                                             "type":  "string"
                                                                                                         }
                                                                                                     },
-                                                                                                    "type":  "object"
+                                                                                                    "type":  [
+                                                                                                        "object",
+                                                                                                        "null"
+                                                                                                    ]
                                                                                                 },
                                                                                                 "snapshotFid":  {
                                                                                                     "type":  "string"
@@ -792,15 +837,21 @@
                                                                                                     "type":  "integer"
                                                                                                 }
                                                                                             },
-                                                                                            "type":  "object"
+                                                                                            "type":  [
+                                                                                                "object",
+                                                                                                "null"
+                                                                                            ]
                                                                                         }
                                                                                     },
                                                                                     "required":  [
+                                                                                        "__typename",
                                                                                         "cursor",
-                                                                                        "node",
-                                                                                        "__typename"
+                                                                                        "node"
                                                                                     ],
-                                                                                    "type":  "object"
+                                                                                    "type":  [
+                                                                                        "object",
+                                                                                        "null"
+                                                                                    ]
                                                                                 },
                                                                                 "type":  "array"
                                                                             },
@@ -822,16 +873,28 @@
                                                                                         "type":  "string"
                                                                                     }
                                                                                 },
-                                                                                "type":  "object"
+                                                                                "type":  [
+                                                                                    "object",
+                                                                                    "null"
+                                                                                ]
                                                                             }
                                                                         },
-                                                                        "type":  "object"
+                                                                        "type":  [
+                                                                            "object",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
-                                                                "type":  "object"
+                                                                "type":  [
+                                                                    "object",
+                                                                    "null"
+                                                                ]
                                                             }
                                                         },
-                                                        "type":  "object"
+                                                        "type":  [
+                                                            "object",
+                                                            "null"
+                                                        ]
                                                     }
                                                 }
                                             }
@@ -1279,7 +1342,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -1303,7 +1366,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -2201,7 +2264,7 @@
                             "type":  "Http",
                             "inputs":  {
                                 "body":  {
-                                    "query":  "query ObjectsListQuery($day: String!, $timezone: String!) {\r\n  policyObjs(day: $day, timezone: $timezone) {\r\n    edges {\r\n      cursor\r\n      node {\r\n        ...PolicyObjFragment\r\n        __typename\r\n      }\r\n      __typename\r\n    }\r\n    pageInfo {\r\n      startCursor\r\n      endCursor\r\n      hasNextPage\r\n      hasPreviousPage\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n}\r\n\r\nfragment PolicyObjFragment on PolicyObj {\r\n  id\r\n  snapshotFid\r\n  snapshotTimestamp\r\n  osType\r\n  shareType\r\n  objectStatus {\r\n    policyStatuses {\r\n      status\r\n      __typename\r\n    }\r\n    latestSnapshotResult {\r\n      snapshotTime\r\n      snapshotFid\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  rootFileResult {\r\n    hits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    analyzerGroupResults {\r\n      ...AnalyzerGroupResultFragment\r\n      __typename\r\n    }\r\n    filesWithHits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessFiles {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessFolders {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessFilesWithHits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    staleFiles {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    staleFilesWithHits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessStaleFiles {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    numActivities\r\n    numActivitiesDelta\r\n    __typename\r\n  }\r\n  snappable {\r\n    ...SnappableFragment\r\n    __typename\r\n  }\r\n  __typename\r\n}\r\n\r\nfragment AnalyzerGroupResultFragment on AnalyzerGroupResult {\r\n  analyzerGroup {\r\n    groupType\r\n    id\r\n    name\r\n    __typename\r\n  }\r\n  analyzerResults {\r\n    hits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      __typename\r\n    }\r\n    analyzer {\r\n      id\r\n      name\r\n      analyzerType\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  hits {\r\n    totalHits\r\n    violations\r\n    permittedHits\r\n    violationsDelta\r\n    totalHitsDelta\r\n    __typename\r\n  }\r\n  __typename\r\n}\r\n\r\nfragment SnappableFragment on HierarchyObject {\r\n  id\r\n  name\r\n  objectType\r\n  slaAssignment\r\n  logicalPath {\r\n    name\r\n    objectType\r\n    __typename\r\n  }\r\n  physicalPath {\r\n    name\r\n    objectType\r\n    __typename\r\n  }\r\n  effectiveSlaDomain {\r\n    id\r\n    name\r\n    __typename\r\n  }\r\n  ... on VSphereVm {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on LinuxFileset {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on ShareFileset {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on WindowsFileset {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on NutanixVm {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on HyperVVirtualMachine {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on VolumeGroup {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  __typename\r\n}\r\n",
+                                    "query":  "query ObjectsListQuery($day: String!, $timezone: String!) {\r\n  policyObjs(day: $day, timezone: $timezone,workloadTypes:[]) {\r\n    edges {\r\n      cursor\r\n      node {\r\n        ...PolicyObjFragment\r\n        __typename\r\n      }\r\n      __typename\r\n    }\r\n    pageInfo {\r\n      startCursor\r\n      endCursor\r\n      hasNextPage\r\n      hasPreviousPage\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n}\r\n\r\nfragment PolicyObjFragment on PolicyObj {\r\n  id\r\n  snapshotFid\r\n  snapshotTimestamp\r\n  osType\r\n  shareType\r\n  objectStatus {\r\n    policyStatuses {\r\n      status\r\n      __typename\r\n    }\r\n    latestSnapshotResult {\r\n      snapshotTime\r\n      snapshotFid\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  rootFileResult {\r\n    hits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    analyzerGroupResults {\r\n      ...AnalyzerGroupResultFragment\r\n      __typename\r\n    }\r\n    filesWithHits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessFiles {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessFolders {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessFilesWithHits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    staleFiles {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    staleFilesWithHits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    openAccessStaleFiles {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      violationsDelta\r\n      totalHitsDelta\r\n      __typename\r\n    }\r\n    numActivities\r\n    numActivitiesDelta\r\n    __typename\r\n  }\r\n  snappable {\r\n    ...SnappableFragment\r\n    __typename\r\n  }\r\n  __typename\r\n}\r\n\r\nfragment AnalyzerGroupResultFragment on AnalyzerGroupResult {\r\n  analyzerGroup {\r\n    groupType\r\n    id\r\n    name\r\n    __typename\r\n  }\r\n  analyzerResults {\r\n    hits {\r\n      totalHits\r\n      violations\r\n      permittedHits\r\n      __typename\r\n    }\r\n    analyzer {\r\n      id\r\n      name\r\n      analyzerType\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  hits {\r\n    totalHits\r\n    violations\r\n    permittedHits\r\n    violationsDelta\r\n    totalHitsDelta\r\n    __typename\r\n  }\r\n  __typename\r\n}\r\n\r\nfragment SnappableFragment on HierarchyObject {\r\n  id\r\n  name\r\n  objectType\r\n  slaAssignment\r\n  logicalPath {\r\n    name\r\n    objectType\r\n    __typename\r\n  }\r\n  physicalPath {\r\n    name\r\n    objectType\r\n    __typename\r\n  }\r\n  effectiveSlaDomain {\r\n    id\r\n    name\r\n    __typename\r\n  }\r\n  ... on VSphereVm {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on LinuxFileset {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on ShareFileset {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on WindowsFileset {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on NutanixVm {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on HyperVVirtualMachine {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  ... on VolumeGroup {\r\n    cluster {\r\n      id\r\n      name\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n  __typename\r\n}\r\n",
                                     "variables":  {
                                         "day":  "@{formatDateTime(utcNow(),'yyyy-MM-dd')}",
                                         "timezone":  "Asia/Calcutta"
@@ -2225,9 +2288,9 @@
                             "RubrikCustomConnector":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('RubrikcustomconnectorConnectionName'))]",
                                 "connectionName":  "[variables('RubrikcustomconnectorConnectionName')]",
-                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                             },
-                            "keyvault":  {
+                            "keyvault_1":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('KeyvaultConnectionName'))]",
                                 "connectionName":  "[variables('KeyvaultConnectionName')]",
                                 "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
@@ -2263,7 +2326,7 @@
                 "customParameterValues":  {
                 },
                 "api":  {
-                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                 }
             }
         },
@@ -2279,6 +2342,11 @@
                 },
                 "api":  {
                     "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
+                },
+                "parameterValues": {
+                    "token:TenantId": "[parameters('tenantId')]",
+                    "token:grantType": "code",
+                    "vaultName": "[parameters('keyvaultName')]"
                 }
             }
         }

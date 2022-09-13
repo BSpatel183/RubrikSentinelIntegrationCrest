@@ -2,12 +2,22 @@
     "$schema":  "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion":  "1.0.0.0",
     "metadata":  {
-        "title":  "",
-        "description":  "",
-        "prerequisites":  "",
-        "postDeployment":  [
+        "title":  "Rubrik Poll Async Result",
+        "description":  "This playbook is used by other playbooks to poll for results from some of the asynchronous API calls that are invoked by other playbooks.",
+        "prerequisites":  [
+            "1. The Rubrik Security Cloud data connector should be configured to send appropriate events to Microsoft Sentinel.",
+            "2. The Rubrik Security Cloud solution should be configured to [connect to Rubrik Security Cloud API end points using a Service Account](https://docs.rubrik.com/en-us/saas/saas/polaris_api_access_with_service_accounts.html), the service account should be assigned a role that includes the relevant privileges necessary to perform the desired operations (see [Roles and Permissions](https://docs.rubrik.com/en-us/saas/saas/common/roles_and_permissions.html) in the Rubrik Security Cloud user guide)."
         ],
-        "prerequisitesDeployTemplateFile":  "",
+        "postDeployment":  [
+            "**a. Authorize connections**",
+            "Once deployment is complete, authorize each connection.",
+            "1. Click the Custom Connector connection resource",
+            "2. Click edit API connection",
+            "3. Click Authorize",
+            "4. Sign in",
+            "5. Click Save",
+            "6. Repeat steps for other connections"
+        ],
         "lastUpdateTime":  "",
         "entities":  [
         ],
@@ -18,13 +28,27 @@
             "armtemplate":  "Generated from https://github.com/Azure/Azure-Sentinel/tree/master/Tools/Playbook-ARM-Template-Generator"
         },
         "author":  {
-            "name":  ""
+            "name":  "Rubrik"
         }
     },
     "parameters":  {
         "PlaybookName":  {
             "defaultValue":  "RubrikPollAsyncResult",
             "type":  "string"
+        },
+        "Rubrik Connector name": {
+            "defaultValue": "RubrikCustomConnector",
+            "type": "String",
+            "metadata": {
+                "description": "Rubrik Custom Connector name"
+            }
+        },
+        "keyvaultName": {
+            "defaultValue": "RubrikSentinelKeyVault",
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
         }
     },
     "variables":  {
@@ -500,7 +524,7 @@
                                     "Succeeded"
                                 ]
                             },
-                            "expression":  "@not(equals(variables('AsyncResultStatus'), or(equals(variables('AsyncResultStatus'), 'QUEUED'), or(equals(variables('AsyncResultStatus'), 'RUNNING'), equals(variables('AsyncResultStatus'), 'ACQUIRING')))))",
+                            "expression":  "@not(equals(or(equals(variables('AsyncResultStatus'), 'QUEUED'), or(equals(variables('AsyncResultStatus'), 'RUNNING'), equals(variables('AsyncResultStatus'), 'ACQUIRING'))), true))",
                             "limit":  {
                                 "timeout":  "@{if(contains(triggerBody(),'PollingTimeout'),concat('PT',triggerBody()['PollingTimeout'],'M'),'PT720M')}"
                             },
@@ -539,7 +563,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -548,6 +572,7 @@
                             "runtimeConfiguration":  {
                                 "secureData":  {
                                     "properties":  [
+                                        "inputs",
                                         "outputs"
                                     ]
                                 }
@@ -563,7 +588,7 @@
                             "inputs":  {
                                 "host":  {
                                     "connection":  {
-                                        "name":  "@parameters('$connections')['keyvault']['connectionId']"
+                                        "name":  "@parameters('$connections')['keyvault_1']['connectionId']"
                                     }
                                 },
                                 "method":  "get",
@@ -572,7 +597,8 @@
                             "runtimeConfiguration":  {
                                 "secureData":  {
                                     "properties":  [
-                                        "inputs"
+                                        "inputs",
+                                        "outputs"
                                     ]
                                 }
                             }
@@ -733,9 +759,9 @@
                             "RubrikCustomConnector":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('RubrikcustomconnectorConnectionName'))]",
                                 "connectionName":  "[variables('RubrikcustomconnectorConnectionName')]",
-                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                                "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                             },
-                            "keyvault":  {
+                            "keyvault_1":  {
                                 "connectionId":  "[resourceId('Microsoft.Web/connections', variables('KeyvaultConnectionName'))]",
                                 "connectionName":  "[variables('KeyvaultConnectionName')]",
                                 "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
@@ -771,7 +797,7 @@
                 "customParameterValues":  {
                 },
                 "api":  {
-                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/customApis/Rubrikcustomconnector')]"
+                    "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/customApis/', parameters('Rubrik Connector name'))]"
                 }
             }
         },
@@ -787,6 +813,11 @@
                 },
                 "api":  {
                     "id":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/Keyvault')]"
+                },
+                "parameterValues": {
+                    "token:TenantId": "[parameters('tenantId')]",
+                    "token:grantType": "code",
+                    "vaultName": "[parameters('keyvaultName')]"
                 }
             }
         }
